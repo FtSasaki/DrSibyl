@@ -28,7 +28,7 @@ Here stuff you need to put in config.py or Environment variables:
 
 ## Purpose and schematics
 
-Based on the popular anime series "Psycho Pass", Sibyl is designed to work in a judgement and scan system where groups can request Cymatic scans for spammers, this then connects to the Sibyl network and sends the data to Sibyl for judgement, upon the approval of which the user is judged by the dominator. [Base idea of Sibyl](https://psychopass.fandom.com/wiki/Sibyl_System "Base idea of Sibyl")
+Based on the popular anime series "Psycho Pass", Sibylx is designed to work in a judgement and scan system where groups can request Cymatic scans for spammers, this then connects to the Sibyl network and sends the data to Sibyl for judgement, upon the approval of which the user is judged by the dominator. [Base idea of Sibyl](https://psychopass.fandom.com/wiki/Sibyl_System "Base idea of Sibyl")
 
 > To create and manage all Dominators and scanner systems in-country and to monitor the behavior of MWPSB personnel
 
