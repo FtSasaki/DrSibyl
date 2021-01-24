@@ -1,8 +1,11 @@
-from Sibyl_System import System, session, INSPECTORS, Sibyl_logs
+from Sibyl_System import System, session, INSPECTORS, ENFORCERS, Sibyl_logs
 from Sibyl_System.strings import proof_string, scan_request_string, reject_string
-from Sibyl_System.plugins.Mongo_DB.gbans import get_gban
+from Sibyl_System.plugins.Mongo_DB.gbans import get_gban, get_gban_by_proofid
+import Sibyl_System.plugins.Mongo_DB.bot_settings as db
 
 from telethon import events, custom
+
+from typing import Union
 
 import re
 import asyncio
@@ -10,9 +13,17 @@ import asyncio
 data = []
 DATA_LOCK = asyncio.Lock()
 
+async def can_ban(event):
+    status = False
+    if event.chat.admin_rights:
+        status = event.chat.admin_rights.ban_users
+    return status
 
-async def make_proof(user):
-    data = await get_gban(user)
+async def make_proof(user: Union[str, int]):
+    if isinstance(user, str) and user.startswith('#'):
+        data = await get_gban_by_proofid(int(user.strip('#')))
+    else:
+        data = await get_gban(int(user))
     if not data:
         return False
     message = data.get("message") or ""
@@ -40,7 +51,7 @@ async def help(event):
         """
 This bot is a inline bot, You can use it by typing `@SibylSystemRobot`
 If a user is gbanned -
-    Getting reason for gban, message the user was gbanned for - `@SibylSystemRobot proof <user_id>`
+    Getting reason for gban, message the user was gbanned for - `@SibylSystemRobot proof <user_id|proof_id>`
     """
     )
 
@@ -120,11 +131,11 @@ async def inline_handler(event):
         if len(split) == 1:
             result = builder.article("Type Case-ID", text="No Case-ID was provided")
         else:
-            proof = await make_proof(int(split[1]))
+            proof = await make_proof(split[1])
             if proof is False:
                 result = builder.article(
-                    "Unknown error occured while getting proof from Case-ID",
-                    text="Unknown error occured while getting proof from Case-ID",
+                    "User is not gbanned.",
+                    text="User is not gbanned.",
                 )
             else:
                 result = builder.article("Proof", text=proof, link_preview=False)
@@ -168,3 +179,43 @@ async def inline_handler(event):
             text="Use\nproof <user_id> to get proof\nbuilder id:::enforcer:::source:::reason:::message",
         )
     await event.answer([result])
+
+@System.bot.on(events.ChatAction(func=lambda e: e.user_joined))
+async def check_user(event):
+    print(event.stringify())
+    if event.created:
+        return
+    user = await event.get_user()
+    if not user:
+        if System.bot.id in event.action_message.action.users:
+            if (await db.add_chat(event.chat_id)):
+                msg = "Thanks for adding me here!\n"\
+                      "Here are your current settings:\n"\
+                      "Alert: True\n"\
+                      "Alert Mode: Warn"
+                await event.respond(msg)
+            else: # Chat already exists in database
+                return
+        else:
+            return
+    elif user.id in INSPECTORS or user.id in ENFORCERS:
+        return
+    else:
+        u = await get_gban(user.id)
+        chat = await db.get_chat(event.chat_id)
+        if not u:
+            return
+        if chat['alertmode'] == 'silent-ban':
+            await event.client.edit_permissions(event.chat_id, user.id, view_messages=False)
+            return
+        msg = f"{user.first_name}'s Crime-Coeffecient is over 300!\n"\
+              f"*Reason:* `{u['reason']}`\n"
+        if chat['alertmode'] == 'ban':
+            if can_ban(event):
+                await event.client.edit_permissions(event.chat_id, user.id, view_messages=False)
+                msg += "Banning them from here."
+            else:
+                msg += "I can't ban users here, So just warning."
+                
+        await event.respond(msg)
+        
