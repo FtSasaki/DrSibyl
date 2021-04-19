@@ -2,17 +2,16 @@
 
 from telethon import events
 from telethon.sessions import StringSession
-
 from motor import motor_asyncio
 import aiohttp
 import json
 from datetime import datetime
+
+import traceback
 import logging
 import os
 import re
 
-if os.path.exists('log.txt'):
-    os.remove("log.txt")
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -63,7 +62,11 @@ MONGO_CLIENT = motor_asyncio.AsyncIOMotorClient(MONGO_DB_URL)
 
 from .client_class import SibylClient
 
-System = SibylClient(StringSession(STRING_SESSION), API_ID_KEY, API_HASH_KEY)
+try:
+    System = SibylClient(StringSession(STRING_SESSION), API_ID_KEY, API_HASH_KEY)
+except:
+    print(traceback.format_exc())
+    exit(1)
 
 collection = MONGO_CLIENT["Sibyl"]["Main"]
 
@@ -112,7 +115,7 @@ def system_cmd(
     **args
 ):
     if pattern and allow_slash:
-        args["pattern"] = re.compile(r"[\?\.!/]" + pattern)
+        args["pattern"] = re.compile(r"[\?\.!/](" + pattern + r")(?!@)")
     else:
         args["pattern"] = re.compile(r"[\?\.!]" + pattern)
     if allow_sibyl and allow_enforcer:
